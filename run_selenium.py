@@ -70,25 +70,20 @@ def load_cookies(driver, filename):
         for cookie in cookies:
             driver.add_cookie(cookie)
 
-
 def login_to_twitter(driver):
     try:
         driver.get('https://x.com/login')
         wait = WebDriverWait(driver, 10)
 
-        # Enter username
-        username_field = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='text']")))
-        username_field.send_keys(twitter_user)
-        username_field.send_keys(Keys.ENTER)
-        time.sleep(4)  # Adjust if additional waits are necessary
+        # Wait for the first input field (username/email)
+        first_input_field = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='text']")))
 
-        # Enter email (if prompted)
-        email_field = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='text']")))
-        email_field.send_keys(twitter_email)
-        email_field.send_keys(Keys.ENTER)
+        # Enter username or email
+        first_input_field.send_keys(twitter_user)
+        first_input_field.send_keys(Keys.ENTER)
         time.sleep(4)
 
-        # Enter password
+        # Wait for the password input field and enter password
         password_field = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='password']")))
         password_field.send_keys(twitter_pass)
         password_field.send_keys(Keys.ENTER)
@@ -96,6 +91,7 @@ def login_to_twitter(driver):
 
         # Save cookies for future use
         save_cookies(driver, "twitter_cookies.pkl")
+        print("Login successful!")
     except Exception as e:
         print(f"Login failed: {e}")
 
@@ -123,18 +119,38 @@ def fetch_current_ip():
 
 # Add data to MongoDB
 def add_to_database(trends):
-    trending_data = {
-        'trend_1': trends[0],
-        'trend_2': trends[1],
-        'trend_3': trends[2],
-        'trend_4': trends[3],
-        'trend_5': trends[4],
-        'date': str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-        'ip_address': fetch_current_ip()
-    }
-    trends_collection.insert_one(trending_data)
+    try:
+    # Ensure trends list has at least 5 elements
+        trending_data = {
+            'trend_1': trends[0] if len(trends) > 0 else None,
+            'trend_2': trends[1] if len(trends) > 1 else None,
+            'trend_3': trends[2] if len(trends) > 2 else None,
+            'trend_4': trends[3] if len(trends) > 3 else None,
+            'trend_5': trends[4] if len(trends) > 4 else None,
+            'date': str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+            'ip_address': fetch_current_ip()
+        }
+        # Insert data into MongoDB
+
+        result = trends_collection.insert_one(trending_data)
+        if result.acknowledged:
+            print("Trending data successfully added to MongoDB.")
+        else:
+            print("Failed to add trending data to MongoDB.")
+    except Exception as e:
+        print(f"Error while inserting data into MongoDB: {e}")
+
+# Check MongoDB connection
+def check_mongo_connection():
+    try:
+        # Ping MongoDB server to check connection
+        mongo_client.admin.command('ping')
+        print("MongoDB connection successful.")
+    except Exception as e:
+        print(f"MongoDB connection failed: {e}")
 
 def main():
+    check_mongo_connection()
     proxy = configure_proxy()
     driver = initialize_driver(proxy)
     try:
